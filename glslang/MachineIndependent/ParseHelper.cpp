@@ -988,7 +988,7 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 
             if (builtIn && fnCandidate->getBuiltInOp() != EOpNull) {
                 // A function call mapped to a built-in operation.
-                result = handleBuiltInFunctionCall(loc, *arguments, *fnCandidate);
+                result = handleBuiltInFunctionCall(loc, arguments, *fnCandidate);
             } else {
                 // This is a function call not mapped to built-in operator.
                 // It could still be a built-in function, but only if PureOperatorBuiltins == false.
@@ -1036,20 +1036,23 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
     return result;
 }
 
-TIntermTyped* TParseContext::handleBuiltInFunctionCall(TSourceLoc loc, TIntermNode& arguments,
+TIntermTyped* TParseContext::handleBuiltInFunctionCall(TSourceLoc loc, TIntermNode* const arguments,
                                                        const TFunction& function)
 {
     checkLocation(loc, function.getBuiltInOp());
     TIntermTyped *result = intermediate.addBuiltInFunctionCall(loc, function.getBuiltInOp(),
                                                                function.getParamCount() == 1,
-                                                               &arguments, function.getType());
+                                                               arguments, function.getType());
     if (obeyPrecisionQualifiers())
         computeBuiltinPrecisions(*result, function);
 
-    if (result == nullptr)  {
-        error(arguments.getLoc(), " wrong operand type", "Internal Error",
+    if (result == nullptr && arguments != nullptr)  {
+        error(arguments->getLoc(), " wrong operand type", "Internal Error",
                                   "built in unary operator function.  Type: %s",
-                                  static_cast<TIntermTyped*>(&arguments)->getCompleteString().c_str());
+                                  static_cast<TIntermTyped*>(arguments)->getCompleteString().c_str());
+    } else if (result == nullptr) {
+        error(loc, " wrong operand type", "Internal Error",
+              "built in nullary operator function.");
     } else if (result->getAsOperator())
         builtInOpCheck(loc, function, *result->getAsOperator());
 
